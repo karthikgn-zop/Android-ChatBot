@@ -10,6 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.material3.Switch
+import androidx.compose.material.icons.filled.DarkMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,22 +48,22 @@ fun SettingsScreen(
 
             item {
                 ListItem(
-                    headlineContent = { Text("Clear all history") },
-                    supportingContent = { Text("Delete all conversations and messages") },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.DeleteSweep,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
-                        )
+                    headlineContent   = { Text("Dark mode") },
+                    supportingContent = { Text("Switch between light and dark theme") },
+                    leadingContent    = {
+                        Icon(Icons.Default.DarkMode, contentDescription = null)
                     },
-                    modifier = Modifier.clickable(
-                        onClick = { showClearHistoryDialog = true }
-                    )
+                    trailingContent   = {
+                        Switch(
+                            checked         = isDarkMode,
+                            onCheckedChange = { viewModel.toggleDarkMode(it) }
+                        )
+                    }
                 )
             }
 
             item { HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp)) }
+
 
             // ── Section: Data ────────────────────────────────────────────────
             item {

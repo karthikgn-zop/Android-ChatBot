@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -60,6 +61,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
+
 @HiltViewModel // <-- Ensure your ViewModel is annotated for Hilt injection
 class HistoryViewModel @Inject constructor(
     private val getConversations: GetConversationsUseCase,
@@ -92,55 +94,76 @@ class HistoryViewModel @Inject constructor(
 }
 
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     onOpenConversation: (String, String) -> Unit,
-    viewModel: HistoryViewModel=hiltViewModel()
-){
+    onNavigateToSettings: () -> Unit,             // ← add
+    viewModel: HistoryViewModel = hiltViewModel()
+) {
     val conversations by viewModel.conversations.collectAsState()
     var showRenameDialog by remember { mutableStateOf<Conversation?>(null) }
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Conversations") })
+            TopAppBar(
+                title = { Text("Conversations") },
+                actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
+                }
+            )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { viewModel.newConversation { id -> onOpenConversation(id, "New chat") } },
-                icon    = { Icon(Icons.Default.Add, contentDescription = "New chat") },
-                text    = { Text("New chat") }
+                onClick = {
+                    viewModel.newConversation { id ->
+                        onOpenConversation(
+                            id,
+                            "New chat"
+                        )
+                    }
+                },
+                icon = { Icon(Icons.Default.Add, contentDescription = "New chat") },
+                text = { Text("New chat") }
             )
         }
-    ){
-        padding ->
-        if (conversations.isEmpty()){
+    ) { padding ->
+        if (conversations.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
                 contentAlignment = Alignment.Center
-            ){
+            ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.ChatBubbleOutline, null,
+                    Icon(
+                        Icons.Default.ChatBubbleOutline, null,
                         modifier = Modifier.size(56.dp),
-                        tint     = MaterialTheme.colorScheme.outline)
+                        tint = MaterialTheme.colorScheme.outline
+                    )
                     Spacer(Modifier.height(12.dp))
                     Text("No conversations yet", color = MaterialTheme.colorScheme.outline)
-                    Text("Tap + to start one", color = MaterialTheme.colorScheme.outline,
-                        style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        "Tap + to start one", color = MaterialTheme.colorScheme.outline,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
-        } else{
+        } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {
                 items(conversations, key = { it.id }) { conversation ->
                     ConversationItem(
                         conversation = conversation,
-                        onClick      = { onOpenConversation(conversation.id, conversation.title) },
-                        onRename     = { showRenameDialog = conversation },
-                        onDelete     = { viewModel.deleteConversation(conversation.id) }
+                        onClick = { onOpenConversation(conversation.id, conversation.title) },
+                        onRename = { showRenameDialog = conversation },
+                        onDelete = { viewModel.deleteConversation(conversation.id) }
                     )
                     HorizontalDivider(modifier = Modifier.padding(start = 72.dp))
                 }
@@ -152,13 +175,13 @@ fun HistoryScreen(
         var newTitle by remember { mutableStateOf(conv.title) }
         AlertDialog(
             onDismissRequest = { showRenameDialog = null },
-            title            = { Text("Rename conversation") },
-            text             = {
+            title = { Text("Rename conversation") },
+            text = {
                 OutlinedTextField(
-                    value         = newTitle,
+                    value = newTitle,
                     onValueChange = { newTitle = it },
-                    singleLine    = true,
-                    label         = { Text("Title") }
+                    singleLine = true,
+                    label = { Text("Title") }
                 )
             },
             confirmButton = {
@@ -180,11 +203,11 @@ private fun ConversationItem(
     onClick: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit
-){
+) {
     var expanded by remember { mutableStateOf(false) }
 
     ListItem(
-        modifier     = Modifier.clickable(onClick = onClick),
+        modifier = Modifier.clickable(onClick = onClick),
         headlineContent = {
             Text(conversation.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
         },
@@ -196,8 +219,10 @@ private fun ConversationItem(
             )
         },
         leadingContent = {
-            Icon(Icons.Default.Chat, contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary)
+            Icon(
+                Icons.Default.Chat, contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
         },
         trailingContent = {
             Box {
@@ -206,14 +231,18 @@ private fun ConversationItem(
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     DropdownMenuItem(
-                        text    = { Text("Rename") },
+                        text = { Text("Rename") },
                         leadingIcon = { Icon(Icons.Default.Edit, null) },
                         onClick = { expanded = false; onRename() }
                     )
                     DropdownMenuItem(
-                        text    = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                        leadingIcon = { Icon(Icons.Default.Delete, null,
-                            tint = MaterialTheme.colorScheme.error) },
+                        text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Delete, null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        },
                         onClick = { expanded = false; onDelete() }
                     )
                 }
@@ -222,12 +251,12 @@ private fun ConversationItem(
     )
 }
 
-private fun Long.toRelativeTime(): String{
+private fun Long.toRelativeTime(): String {
     val diff = System.currentTimeMillis() - this
-    return  when{
-        diff < 60_000       -> "just now"
-        diff < 3_600_000    -> "${diff / 60_000}m ago"
-        diff < 86_400_000   -> "${diff / 3_600_000}h ago"
-        else                -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(this))
+    return when {
+        diff < 60_000 -> "just now"
+        diff < 3_600_000 -> "${diff / 60_000}m ago"
+        diff < 86_400_000 -> "${diff / 3_600_000}h ago"
+        else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(this))
     }
 }

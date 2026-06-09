@@ -109,6 +109,30 @@ class ChatRepositoryImpl @Inject constructor(
 
     override suspend fun deleteMessagesForConversation(conversationId: String) =
         messageDao.deleteMessagesForConversation(conversationId)
+
+    override suspend fun generateTitle(prompt: String): String {
+        val messages = listOf(
+            OpenAIMessage(role = "system", content = "Generate a short 3-5 word title for a conversation that starts with the following message. Reply with ONLY the title, no punctuation, no quotes."),
+            OpenAIMessage(role = "user", content = prompt)
+        )
+        val response = apiService.streamChatCompletion(
+            OpenAIRequest(
+                model = BuildConfig.MODEL,
+                messages = messages,
+                stream = false,
+                maxTokens = 20
+            )
+        )
+        // For non-streaming, parse the full response body as JSON
+        val body = response.body()?.string() ?: return "New Chat"
+        return try {
+            val json = com.google.gson.JsonParser.parseString(body).asJsonObject
+            json["choices"].asJsonArray[0].asJsonObject["message"]
+                .asJsonObject["content"].asString.trim()
+        } catch (e: Exception) {
+            "New Chat"
+        }
+    }
 }
 
 // ─── Mappers ──────────────────────────────────────────────────────────────────

@@ -9,7 +9,6 @@ import retrofit2.http.Headers
 import retrofit2.http.POST
 import retrofit2.http.Streaming
 
-// ── Request ───────────────────────────────────────────────────────────────────
 
 data class OpenAIRequest(
     val model: String = "llama-3.1-8b-instant",
@@ -24,8 +23,6 @@ data class OpenAIMessage(
     val role: String,
     val content: String
 )
-
-// ── SSE chunk ─────────────────────────────────────────────────────────────────
 
 data class OpenAIStreamChunk(
     val id: String?,
@@ -43,7 +40,6 @@ data class OpenAIDelta(
     val role: String?
 )
 
-// ── Service ───────────────────────────────────────────────────────────────────
 
 interface OpenAIApiService {
     @Streaming
@@ -52,9 +48,13 @@ interface OpenAIApiService {
     suspend fun streamChatCompletion(
         @Body request: OpenAIRequest
     ): Response<ResponseBody>
+
+    @POST("v1/chat/completions")
+    suspend fun chatCompletion(
+        @Body request: OpenAIRequest
+    ): Response<ResponseBody>
 }
 
-// ── Role mapper ───────────────────────────────────────────────────────────────
 
 fun MessageRole.toOpenAIRole(): String = when (this) {
     MessageRole.USER      -> "user"
