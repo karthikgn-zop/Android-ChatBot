@@ -70,9 +70,8 @@ fun AIChatNavGraph() {
         // History (home screen)
         composable(Routes.HISTORY) {
             HistoryScreen(
-                onOpenConversation = { id, title ->
-                    navController.navigate(Routes.chat(id, title))
-                }
+                onOpenConversation   = { id, title -> navController.navigate(Routes.chat(id, title)) },
+                onNavigateToSettings = { navController.navigate(Routes.SETTINGS) }  // ← add
             )
         }
 
@@ -95,7 +94,10 @@ fun AIChatNavGraph() {
         }
 
         composable(Routes.SETTINGS) {
-            SettingsScreen()
+            SettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
+
     }
 }
