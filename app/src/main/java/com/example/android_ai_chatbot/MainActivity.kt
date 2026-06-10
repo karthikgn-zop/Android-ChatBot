@@ -14,6 +14,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.android_ai_chatbot.feature.auth.AuthViewModel
+import com.example.android_ai_chatbot.feature.auth.LoginScreen
 import com.example.android_ai_chatbot.feature.chat.ChatScreen
 import com.example.android_ai_chatbot.feature.history.HistoryScreen
 import com.example.android_ai_chatbot.feature.settings.SettingsScreen
@@ -45,9 +47,10 @@ class MainActivity : ComponentActivity() {
 
 
 object Routes {
-    const val HISTORY  = "history"
+    const val LOGIN = "login"
+    const val HISTORY = "history"
     const val SETTINGS = "settings"
-    const val CHAT     = "chat/{conversationId}/{title}"
+    const val CHAT = "chat/{conversationId}/{title}"
 
     fun chat(conversationId: String, title: String) =
         "chat/$conversationId/${title.encodeForNav()}"
@@ -62,42 +65,60 @@ private fun String.decodeFromNav() =
 @Composable
 fun AIChatNavGraph() {
     val navController = rememberNavController()
+    val authViewModel: AuthViewModel = hiltViewModel()
 
-    NavHost(
-        navController    = navController,
-        startDestination = Routes.HISTORY
-    ) {
-        // History (home screen)
-        composable(Routes.HISTORY) {
-            HistoryScreen(
-                onOpenConversation   = { id, title -> navController.navigate(Routes.chat(id, title)) },
-                onNavigateToSettings = { navController.navigate(Routes.SETTINGS) }  // ← add
+    // Start on login if not signed in, history if already signed in
+    val startDestination = if (authViewModel.isLoggedIn) Routes.HISTORY else Routes.LOGIN
+
+    NavHost(navController = navController, startDestination = startDestination) {
+
+        composable(Routes.LOGIN) {
+            LoginScreen(
+                onLoginSuccess = {
+                    navController.navigate(Routes.HISTORY) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                }
             )
         }
 
-        // Chat screen
-        composable(
-            route     = Routes.CHAT,
-            arguments = listOf(
-                navArgument("conversationId") { type = NavType.StringType },
-                navArgument("title")          { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val title = backStackEntry.arguments
-                ?.getString("title")
-                ?.decodeFromNav() ?: "Chat"
-
-            ChatScreen(
-                conversationTitle = title,
-                onNavigateBack    = { navController.popBackStack() }
+        composable(Routes.HISTORY) {
+            HistoryScreen(
+                onOpenConversation = { id, title ->
+                    navController.navigate(
+                        Routes.chat(
+                            id,
+                            title
+                        )
+                    )
+                },
+                onNavigateToSettings = { navController.navigate(Routes.SETTINGS) }
             )
         }
 
         composable(Routes.SETTINGS) {
             SettingsScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToLogin = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(navController.graph.startDestinationId)
+                    }
+                }
             )
         }
 
+        composable(
+            route = Routes.CHAT,
+            arguments = listOf(
+                navArgument("conversationId") { type = NavType.StringType },
+                navArgument("title") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val title = backStackEntry.arguments?.getString("title")?.decodeFromNav() ?: "Chat"
+            ChatScreen(
+                conversationTitle = title,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
     }
 }

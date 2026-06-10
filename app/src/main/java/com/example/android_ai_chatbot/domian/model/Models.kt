@@ -4,7 +4,7 @@ data class Conversation(
     val id: String,
     val title: String,
     val createdAt: Long,
-    val updatedAt:Long
+    val updatedAt: Long
 )
 
 data class Message(
@@ -16,10 +16,10 @@ data class Message(
     val isStreaming: Boolean = false
 )
 
-enum class MessageRole{USER,ASSISTANT}
+enum class MessageRole { USER, ASSISTANT }
 
-sealed class ChatState{
-    object Idle: ChatState()
-    object Streaming: ChatState()
-    data class Error(val message: String): ChatState()
+sealed class ChatState {
+    object Idle : ChatState()
+    object Streaming : ChatState()
+    data class Error(val message: String) : ChatState()
 }

@@ -24,8 +24,8 @@ import javax.inject.Inject
 
 data class ChatUiState(
     val messages: List<Message> = emptyList(),
-    val chatState: ChatState    = ChatState.Idle,
-    val inputText: String       = "",
+    val chatState: ChatState = ChatState.Idle,
+    val inputText: String = "",
     val conversationTitle: String = "New chat"
 )
 
@@ -36,8 +36,8 @@ class ChatViewModel @Inject constructor(
     private val getMessagesUseCase: GetMessagesUseCase,
     private val chatRepository: ChatRepository,
     savedStateHandle: SavedStateHandle
-) : ViewModel(){
-    private val conversationId: String=checkNotNull(savedStateHandle["conversationId"])
+) : ViewModel() {
+    private val conversationId: String = checkNotNull(savedStateHandle["conversationId"])
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
@@ -47,10 +47,10 @@ class ChatViewModel @Inject constructor(
         loadMessages()
     }
 
-    private fun loadMessages(){
+    private fun loadMessages() {
         viewModelScope.launch {
             getMessagesUseCase(conversationId).collect { messages ->
-                _uiState.update { it.copy(messages=messages) }
+                _uiState.update { it.copy(messages = messages) }
             }
         }
         viewModelScope.launch {
@@ -60,8 +60,9 @@ class ChatViewModel @Inject constructor(
             }
         }
     }
-    fun onInputChanged(text: String){
-        _uiState.update{it.copy(inputText = text)}
+
+    fun onInputChanged(text: String) {
+        _uiState.update { it.copy(inputText = text) }
     }
 
     fun sendMessage() {
@@ -74,23 +75,23 @@ class ChatViewModel @Inject constructor(
         streamingJob = viewModelScope.launch {
 
             // ← NO user message save here, SendMessageUseCase does it
-            val accumulatedContent= StringBuilder()
+            val accumulatedContent = StringBuilder()
             val aiMessageId = UUID.randomUUID().toString()
             val aiPlaceholder = Message(
-                id             = aiMessageId,
+                id = aiMessageId,
                 conversationId = conversationId,
-                content        = "",
-                role           = MessageRole.ASSISTANT,
-                timestamp      = System.currentTimeMillis() + 1,
-                isStreaming    = true
+                content = "",
+                role = MessageRole.ASSISTANT,
+                timestamp = System.currentTimeMillis() + 1,
+                isStreaming = true
             )
 
             runCatching {
                 // SendMessageUseCase saves user message first, then returns stream
                 sendMessageUseCase(
                     conversationId = conversationId,
-                    userText       = prompt,
-                    history        = _uiState.value.messages
+                    userText = prompt,
+                    history = _uiState.value.messages
                 ).collect { token ->
                     // Save AI placeholder only on first token so it appears after user message
                     if (accumulatedContent.isEmpty()) {
@@ -116,14 +117,17 @@ class ChatViewModel @Inject constructor(
             _uiState.update { it.copy(chatState = ChatState.Idle) }
         }
     }
-    fun stopStreaming(){
+
+    fun stopStreaming() {
         streamingJob?.cancel()
-        _uiState.update{it.copy(chatState = ChatState.Idle)}
+        _uiState.update { it.copy(chatState = ChatState.Idle) }
     }
-    fun setVoiceInput(text: String){
-        _uiState.update{ it.copy(inputText = text)}
+
+    fun setVoiceInput(text: String) {
+        _uiState.update { it.copy(inputText = text) }
     }
-    fun clearError(){
+
+    fun clearError() {
         _uiState.update { it.copy(chatState = ChatState.Idle) }
     }
 }

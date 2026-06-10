@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "390112512105",
+    "project_id": "android-ai-chatbot-741d4",
+    "storage_bucket": "android-ai-chatbot-741d4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:390112512105:android:ef5ce53a3e161c74d63af8",
+        "android_client_info": {
+          "package_name": "com.example.android_ai_chatbot"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "390112512105-pp3mm5ggn20ga0i83rbqnrvqrdvb6jpn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.android_ai_chatbot",
+            "certificate_hash": "8d380895687c98fbc88d6f7591afc20d555faa4a"
+          }
+        },
+        {
+          "client_id": "390112512105-kju6uv18s7gcdn494m5timlob5nubq2v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDyZxxcJ1Mb7vqouDRjgI74-aDL-6Mcp5M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "390112512105-kju6uv18s7gcdn494m5timlob5nubq2v.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

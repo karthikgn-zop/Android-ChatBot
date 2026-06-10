@@ -15,10 +15,10 @@ data class ConversationEntity(
 @Entity(
     tableName = "messages",
     foreignKeys = [ForeignKey(
-        entity        = ConversationEntity::class,
+        entity = ConversationEntity::class,
         parentColumns = ["id"],
-        childColumns  = ["conversationId"],
-        onDelete      = ForeignKey.CASCADE
+        childColumns = ["conversationId"],
+        onDelete = ForeignKey.CASCADE
     )],
     indices = [Index("conversationId")]
 )
@@ -48,6 +48,9 @@ interface ConversationDao {
 
     @Query("DELETE FROM conversations WHERE id = :id")
     suspend fun deleteConversation(id: String)
+
+    @Query("DELETE FROM conversations")
+    suspend fun deleteAllConversations()
 }
 
 @Dao
@@ -63,12 +66,15 @@ interface MessageDao {
 
     @Query("DELETE FROM messages WHERE conversationId = :conversationId")
     suspend fun deleteMessagesForConversation(conversationId: String)
+
+    @Query("DELETE FROM messages")
+    suspend fun deleteAllMessages()
 }
 
 
 @Database(
-    entities  = [ConversationEntity::class, MessageEntity::class],
-    version   = 1,
+    entities = [ConversationEntity::class, MessageEntity::class],
+    version = 1,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

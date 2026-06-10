@@ -112,7 +112,10 @@ class ChatRepositoryImpl @Inject constructor(
 
     override suspend fun generateTitle(prompt: String): String {
         val messages = listOf(
-            OpenAIMessage(role = "system", content = "Generate a short 3-5 word title for a conversation that starts with the following message. Reply with ONLY the title, no punctuation, no quotes."),
+            OpenAIMessage(
+                role = "system",
+                content = "Generate a short 3-5 word title for a conversation that starts with the following message. Reply with ONLY the title, no punctuation, no quotes."
+            ),
             OpenAIMessage(role = "user", content = prompt)
         )
         val response = apiService.streamChatCompletion(
@@ -133,26 +136,30 @@ class ChatRepositoryImpl @Inject constructor(
             "New Chat"
         }
     }
+
+    override suspend fun deleteAllMessages() = messageDao.deleteAllMessages()
+
+
 }
 
 // ─── Mappers ──────────────────────────────────────────────────────────────────
 
 private fun MessageEntity.toDomain() = Message(
-    id             = id,
+    id = id,
     conversationId = conversationId,
-    content        = content,
-    role           = MessageRole.valueOf(role),
-    timestamp      = timestamp,
-    isStreaming    = isStreaming
+    content = content,
+    role = MessageRole.valueOf(role),
+    timestamp = timestamp,
+    isStreaming = isStreaming
 )
 
 private fun Message.toEntity() = MessageEntity(
-    id             = id,
+    id = id,
     conversationId = conversationId,
-    content        = content,
-    role           = role.name,
-    timestamp      = timestamp,
-    isStreaming    = isStreaming
+    content = content,
+    role = role.name,
+    timestamp = timestamp,
+    isStreaming = isStreaming
 )
 
 // ─── ConversationRepositoryImpl (unchanged) ───────────────────────────────────
@@ -167,8 +174,8 @@ class ConversationRepositoryImpl @Inject constructor(
 
     override suspend fun createConversation(title: String): Conversation {
         val entity = ConversationEntity(
-            id        = UUID.randomUUID().toString(),
-            title     = title,
+            id = UUID.randomUUID().toString(),
+            title = title,
             createdAt = System.currentTimeMillis(),
             updatedAt = System.currentTimeMillis()
         )
@@ -184,6 +191,10 @@ class ConversationRepositoryImpl @Inject constructor(
 
     override suspend fun updateTimestamp(id: String, timestamp: Long) =
         conversationDao.updateTimestamp(id, timestamp)
+
+    override suspend fun deleteAllConversations() =
+        conversationDao.deleteAllConversations()
+
 }
 
 private fun ConversationEntity.toDomain() = Conversation(

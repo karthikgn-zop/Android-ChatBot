@@ -1,5 +1,6 @@
 package com.example.android_ai_chatbot.feature.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -8,15 +9,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.clickable
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.material3.Switch
-import androidx.compose.material.icons.filled.DarkMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit = {},
+    onNavigateToLogin: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val isDarkMode by viewModel.isDarkMode.collectAsState()
@@ -35,7 +34,7 @@ fun SettingsScreen(
         }
     ) { padding ->
         LazyColumn(
-            modifier       = Modifier
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
             contentPadding = PaddingValues(bottom = 32.dp)
@@ -48,14 +47,14 @@ fun SettingsScreen(
 
             item {
                 ListItem(
-                    headlineContent   = { Text("Dark mode") },
+                    headlineContent = { Text("Dark mode") },
                     supportingContent = { Text("Switch between light and dark theme") },
-                    leadingContent    = {
+                    leadingContent = {
                         Icon(Icons.Default.DarkMode, contentDescription = null)
                     },
-                    trailingContent   = {
+                    trailingContent = {
                         Switch(
-                            checked         = isDarkMode,
+                            checked = isDarkMode,
                             onCheckedChange = { viewModel.toggleDarkMode(it) }
                         )
                     }
@@ -72,13 +71,13 @@ fun SettingsScreen(
 
             item {
                 ListItem(
-                    headlineContent   = { Text("Clear all history") },
+                    headlineContent = { Text("Clear all history") },
                     supportingContent = { Text("Delete all conversations and messages") },
-                    leadingContent    = {
+                    leadingContent = {
                         Icon(
-                            imageVector        = Icons.Default.DeleteSweep,
+                            imageVector = Icons.Default.DeleteSweep,
                             contentDescription = null,
-                            tint               = MaterialTheme.colorScheme.error
+                            tint = MaterialTheme.colorScheme.error
                         )
                     },
                     modifier = Modifier.clickable { showClearHistoryDialog = true }
@@ -87,6 +86,19 @@ fun SettingsScreen(
 
             item { HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp)) }
 
+            item {
+                ListItem(
+                    headlineContent = { Text("Sign Out") },
+                    supportingContent = { Text(viewModel.userEmail) },
+                    leadingContent = {
+                        Icon(Icons.Default.Logout, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable {
+                        viewModel.signOut()
+                        onNavigateToLogin()
+                    }
+                )
+            }
             // ── Section: About ───────────────────────────────────────────────
             item {
                 SettingsSectionHeader(title = "About")
@@ -94,9 +106,9 @@ fun SettingsScreen(
 
             item {
                 ListItem(
-                    headlineContent   = { Text("Version") },
+                    headlineContent = { Text("Version") },
                     supportingContent = { Text("1.0.0") },
-                    leadingContent    = {
+                    leadingContent = {
                         Icon(Icons.Default.Info, contentDescription = null)
                     }
                 )
@@ -104,9 +116,9 @@ fun SettingsScreen(
 
             item {
                 ListItem(
-                    headlineContent   = { Text("Powered by") },
-                    supportingContent = { Text("OpenAI") },
-                    leadingContent    = {
+                    headlineContent = { Text("Powered by") },
+                    supportingContent = { Text("Groq AI") },
+                    leadingContent = {
                         Icon(Icons.Default.AutoAwesome, contentDescription = null)
                     }
                 )
@@ -118,7 +130,7 @@ fun SettingsScreen(
     if (showClearHistoryDialog) {
         AlertDialog(
             onDismissRequest = { showClearHistoryDialog = false },
-            icon             = {
+            icon = {
                 Icon(
                     Icons.Default.DeleteSweep,
                     contentDescription = null,
@@ -126,13 +138,13 @@ fun SettingsScreen(
                 )
             },
             title = { Text("Clear all history?") },
-            text  = {
+            text = {
                 Text("This will permanently delete all conversations and messages. This action cannot be undone.")
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        // TODO: wire up DeleteAllConversationsUseCase here
+                        viewModel.deleteAllHistory()
                         showClearHistoryDialog = false
                     },
                     colors = ButtonDefaults.textButtonColors(
@@ -154,9 +166,9 @@ fun SettingsScreen(
 @Composable
 private fun SettingsSectionHeader(title: String) {
     Text(
-        text     = title,
-        style    = MaterialTheme.typography.labelMedium,
-        color    = MaterialTheme.colorScheme.primary,
+        text = title,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 4.dp)
     )
 }

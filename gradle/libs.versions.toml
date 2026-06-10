@@ -6,18 +6,19 @@ junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.13.0"
-kotlin = "2.0.21"
+kotlin = "2.1.0"
 composeBom = "2024.09.00"
 transportRuntime = "4.1.1"
 retrofit = "2.11.0"
 gson = "2.11.0"
 hilt = "2.55"
-ksp = "2.0.21-1.0.27"
+ksp = "2.1.0-1.0.28"
 room = "2.8.3"
 okhttp = "4.12.0"
 firebaseCrashlyticsBuildtools = "3.0.7"
 lifecycleViewmodelKtx = "2.10.0"
 identityJvm = "202411.1"
+googleid = "1.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -48,6 +49,7 @@ okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-i
 firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
 identity-jvm = { group = "com.android.identity", name = "identity-jvm", version.ref = "identityJvm" }
+googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

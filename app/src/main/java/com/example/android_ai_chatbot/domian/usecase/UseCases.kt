@@ -12,37 +12,39 @@ import javax.inject.Inject
 class SendMessageUseCase @Inject constructor(
     private val chatRepo: ChatRepository,
     private val conversationRepo: ConversationRepository
-){
+) {
     suspend operator fun invoke(
         conversationId: String,
         userText: String,
         history: List<Message>
-    ): Flow<String>{
-        val userMessage= Message(
-            id= UUID.randomUUID().toString(),
+    ): Flow<String> {
+        val userMessage = Message(
+            id = UUID.randomUUID().toString(),
             conversationId = conversationId,
-            content        = userText,
-            role           = MessageRole.USER,
-            timestamp      = System.currentTimeMillis()
+            content = userText,
+            role = MessageRole.USER,
+            timestamp = System.currentTimeMillis()
         )
         chatRepo.saveMessage(userMessage)
         conversationRepo.updateTimestamp(conversationId, System.currentTimeMillis())
-        return chatRepo.sendMessageStream(conversationId,userText,history)
+        return chatRepo.sendMessageStream(conversationId, userText, history)
     }
 }
 
 class GetMessagesUseCase @Inject constructor(
     private val chatRepo: ChatRepository
-){
+) {
     operator fun invoke(conversationId: String): Flow<List<Message>> =
         chatRepo.getMessages(conversationId)
 }
+
 class GetConversationsUseCase @Inject constructor(
     private val conversationRepo: ConversationRepository
-){
+) {
     operator fun invoke(): Flow<List<com.example.android_ai_chatbot.domian.model.Conversation>> =
         conversationRepo.getAllConversations()
 }
+
 class CreateConversationUseCase @Inject constructor(
     private val repository: ConversationRepository
 ) {
@@ -50,12 +52,23 @@ class CreateConversationUseCase @Inject constructor(
         return repository.createConversation(title)
     }
 }
+
 class DeleteConversationUseCase @Inject constructor(
     private val conversationRepo: ConversationRepository,
     private val chatRepo: ChatRepository
-){
-    suspend operator fun invoke(conversationId: String){
+) {
+    suspend operator fun invoke(conversationId: String) {
         chatRepo.deleteMessagesForConversation(conversationId)
         conversationRepo.deleteConversation(conversationId)
+    }
+}
+
+class DeleteAllConversationsUseCase @Inject constructor(
+    private val conversationRepo: ConversationRepository,
+    private val chatRepo: ChatRepository
+) {
+    suspend operator fun invoke() {
+        chatRepo.deleteAllMessages()
+        conversationRepo.deleteAllConversations()
     }
 }

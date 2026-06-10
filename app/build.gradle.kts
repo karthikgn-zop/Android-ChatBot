@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    id("com.google.gms.google-services")
 }
 
 val localProperties = Properties().apply {
@@ -18,6 +19,19 @@ val localProperties = Properties().apply {
 android {
     namespace = "com.example.android_ai_chatbot"
     compileSdk = 36
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("/Users/zopping/Desktop/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+    buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
 
     defaultConfig {
         applicationId = "com.example.android_ai_chatbot"
@@ -80,6 +94,7 @@ dependencies {
     implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.identity.jvm)
+    implementation(libs.googleid)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -114,4 +129,6 @@ dependencies {
 
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.datastore:datastore:1.1.1")
+    implementation(platform("com.google.firebase:firebase-bom:32.7.4"))  // Kotlin 2.1 compatible
+    implementation("com.google.firebase:firebase-auth-ktx")
 }
