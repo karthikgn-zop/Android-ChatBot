@@ -24,6 +24,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
+import com.google.firebase.auth.FirebaseAuth
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -98,4 +99,12 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindConversationRepository(impl: ConversationRepositoryImpl): ConversationRepository
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+object AuthModule {
+    @Provides
+    @Singleton
+    fun provideFirebaseAuth(): FirebaseAuth = FirebaseAuth.getInstance()
 }

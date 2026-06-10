@@ -17,14 +17,14 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 
-sealed class NetworkResults<out T>{
-    data class Success<T>(val data: T): NetworkResults<T>()
+sealed class NetworkResults<out T> {
+    data class Success<T>(val data: T) : NetworkResults<T>()
     data class Error(val message: String, val code: Int? = null) : NetworkResults<Nothing>()
     object Loading : NetworkResults<Nothing>()
 }
 
-suspend fun <T> safeApiCall(apiCall:suspend ()->T): NetworkResults<T>{
-    return try{
+suspend fun <T> safeApiCall(apiCall: suspend () -> T): NetworkResults<T> {
+    return try {
         NetworkResults.Success(apiCall())
     } catch (e: HttpException) {
         val errorMessage = when (e.code()) {
@@ -46,13 +46,13 @@ suspend fun <T> safeApiCall(apiCall:suspend ()->T): NetworkResults<T>{
     } as NetworkResults<T>
 }
 
-fun <T> safeStreamingFlow(block: suspend () ->Flow<T>): Flow<NetworkResults<T>> = flow{
+fun <T> safeStreamingFlow(block: suspend () -> Flow<T>): Flow<NetworkResults<T>> = flow {
     emit(NetworkResults.Loading)
     try {
         block().collect { token ->
             emit(NetworkResults.Success(token))
         }
-    } catch ( e: HttpException){
+    } catch (e: HttpException) {
         emit(NetworkResults.Error("HTTP ${e.code()}: ${e.message()}", e.code()))
     } catch (e: SocketTimeoutException) {
         emit(NetworkResults.Error("Stream timed out"))
@@ -73,12 +73,11 @@ class NetworkMonitor @Inject constructor(
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE)
                     as ConnectivityManager
             val network = cm.activeNetwork ?: return false
-            val caps    = cm.getNetworkCapabilities(network) ?: return false
+            val caps = cm.getNetworkCapabilities(network) ?: return false
             return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                     caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
         }
 }
-
 
 
 class ApiKeyInterceptor(private val apiKey: String) : Interceptor {
@@ -95,12 +94,10 @@ class ApiKeyInterceptor(private val apiKey: String) : Interceptor {
 }
 
 
-
-
 class RetryInterceptor(private val maxRetries: Int = 3) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
-        var attempt  = 0
+        var attempt = 0
         var lastException: IOException? = null
 
         while (attempt < maxRetries) {

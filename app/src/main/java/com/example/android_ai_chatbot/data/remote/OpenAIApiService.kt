@@ -57,6 +57,6 @@ interface OpenAIApiService {
 
 
 fun MessageRole.toOpenAIRole(): String = when (this) {
-    MessageRole.USER      -> "user"
+    MessageRole.USER -> "user"
     MessageRole.ASSISTANT -> "assistant"
 }
