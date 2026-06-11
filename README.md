@@ -292,9 +292,7 @@ copies or substantial portions of the Software.
 ## 👤 Author
 
 **Karthik**
-- Built as a resume project demonstrating Android development with AI integration
 - Stack: Kotlin, Jetpack Compose, Clean Architecture, Hilt, Room, Groq API, Firebase
 
 ---
 
-> 💡 **Note for interviewers:** This project demonstrates production-level Android patterns including Clean Architecture, dependency injection, reactive streams with Flow, real-time SSE streaming, and Firebase authentication — all in a fully functional AI chat application.
