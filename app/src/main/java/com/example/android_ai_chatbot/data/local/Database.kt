@@ -1,6 +1,15 @@
 package com.aichat.data.local
 
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Database
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.PrimaryKey
+import androidx.room.Query
+import androidx.room.RoomDatabase
 import kotlinx.coroutines.flow.Flow
 
 
@@ -26,9 +35,10 @@ data class MessageEntity(
     @PrimaryKey val id: String,
     val conversationId: String,
     val content: String,
-    val role: String,          // "USER" or "ASSISTANT"
+    val role: String,
     val timestamp: Long,
-    val isStreaming: Boolean = false
+    val isStreaming: Boolean = false,
+    val imageUri: String? = null
 )
 
 
@@ -74,8 +84,7 @@ interface MessageDao {
 
 @Database(
     entities = [ConversationEntity::class, MessageEntity::class],
-    version = 1,
-    exportSchema = false
+    version = 2
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun conversationDao(): ConversationDao

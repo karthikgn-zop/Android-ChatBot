@@ -4,12 +4,12 @@ import com.example.android_ai_chatbot.domian.model.Conversation
 import com.example.android_ai_chatbot.domian.model.Message
 import kotlinx.coroutines.flow.Flow
 
-// domain/repository/ChatRepository.kt
 interface ChatRepository {
     fun sendMessageStream(
         conversationId: String,
         prompt: String,
-        history: List<Message>
+        history: List<Message>,
+        messageContent: Any = prompt
     ): Flow<String>
 
     fun getMessages(conversationId: String): Flow<List<Message>>

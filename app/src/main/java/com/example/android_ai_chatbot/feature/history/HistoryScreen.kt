@@ -62,7 +62,7 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
-@HiltViewModel // <-- Ensure your ViewModel is annotated for Hilt injection
+@HiltViewModel
 class HistoryViewModel @Inject constructor(
     private val getConversations: GetConversationsUseCase,
     private val createConversation: CreateConversationUseCase,
@@ -98,7 +98,7 @@ class HistoryViewModel @Inject constructor(
 @Composable
 fun HistoryScreen(
     onOpenConversation: (String, String) -> Unit,
-    onNavigateToSettings: () -> Unit,             // ← add
+    onNavigateToSettings: () -> Unit,
     viewModel: HistoryViewModel = hiltViewModel()
 ) {
     val conversations by viewModel.conversations.collectAsState()

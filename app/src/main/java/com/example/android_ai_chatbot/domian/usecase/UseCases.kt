@@ -1,9 +1,9 @@
 package com.example.android_ai_chatbot.domian.usecase
 
 import com.example.android_ai_chatbot.domian.model.Conversation
-import com.example.android_ai_chatbot.domian.repository.ChatRepository
 import com.example.android_ai_chatbot.domian.model.Message
 import com.example.android_ai_chatbot.domian.model.MessageRole
+import com.example.android_ai_chatbot.domian.repository.ChatRepository
 import com.example.android_ai_chatbot.domian.repository.ConversationRepository
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
@@ -16,7 +16,8 @@ class SendMessageUseCase @Inject constructor(
     suspend operator fun invoke(
         conversationId: String,
         userText: String,
-        history: List<Message>
+        history: List<Message>,
+        messageContent: Any = userText
     ): Flow<String> {
         val userMessage = Message(
             id = UUID.randomUUID().toString(),
@@ -27,7 +28,7 @@ class SendMessageUseCase @Inject constructor(
         )
         chatRepo.saveMessage(userMessage)
         conversationRepo.updateTimestamp(conversationId, System.currentTimeMillis())
-        return chatRepo.sendMessageStream(conversationId, userText, history)
+        return chatRepo.sendMessageStream(conversationId, userText, history, messageContent)
     }
 }
 

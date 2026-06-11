@@ -5,11 +5,11 @@ import com.aichat.data.local.ConversationEntity
 import com.aichat.data.local.MessageDao
 import com.aichat.data.local.MessageEntity
 import com.example.android_ai_chatbot.BuildConfig
-import com.example.android_ai_chatbot.data.remote.OpenAIApiService        // ← OpenAI
-import com.example.android_ai_chatbot.data.remote.OpenAIMessage            // ← OpenAI
-import com.example.android_ai_chatbot.data.remote.OpenAIRequest            // ← OpenAI
-import com.example.android_ai_chatbot.data.remote.OpenAIStreamChunk        // ← OpenAI
-import com.example.android_ai_chatbot.data.remote.toOpenAIRole             // ← OpenAI
+import com.example.android_ai_chatbot.data.remote.OpenAIApiService
+import com.example.android_ai_chatbot.data.remote.OpenAIMessage
+import com.example.android_ai_chatbot.data.remote.OpenAIRequest
+import com.example.android_ai_chatbot.data.remote.OpenAIStreamChunk
+import com.example.android_ai_chatbot.data.remote.toOpenAIRole
 import com.example.android_ai_chatbot.domian.model.Conversation
 import com.example.android_ai_chatbot.domian.model.Message
 import com.example.android_ai_chatbot.domian.model.MessageRole
@@ -24,13 +24,10 @@ import kotlinx.coroutines.flow.map
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.collections.buildList
-import kotlin.collections.forEach
-import kotlin.runCatching
 
 @Singleton
 class ChatRepositoryImpl @Inject constructor(
-    private val apiService: OpenAIApiService,   // ← OpenAI, not Gemini
+    private val apiService: OpenAIApiService,
     private val messageDao: MessageDao
 ) : ChatRepository {
 
@@ -39,7 +36,8 @@ class ChatRepositoryImpl @Inject constructor(
     override fun sendMessageStream(
         conversationId: String,
         prompt: String,
-        history: List<Message>
+        history: List<Message>,
+        messageContent: Any
     ): Flow<String> = flow {
 
         val messages = buildList {
@@ -47,14 +45,11 @@ class ChatRepositoryImpl @Inject constructor(
             history.takeLast(20).forEach { msg ->
                 add(OpenAIMessage(role = msg.role.toOpenAIRole(), content = msg.content))
             }
-            add(OpenAIMessage(role = "user", content = prompt))
+            add(OpenAIMessage(role = "user", content = messageContent))
         }
 
         val response = apiService.streamChatCompletion(
-            OpenAIRequest(
-                model = BuildConfig.MODEL,   // ← uses llama-3.1-8b-instant from local.properties
-                messages = messages
-            )
+            OpenAIRequest(model = BuildConfig.MODEL, messages = messages)
         )
 
         if (!response.isSuccessful) {
@@ -126,7 +121,7 @@ class ChatRepositoryImpl @Inject constructor(
                 maxTokens = 20
             )
         )
-        // For non-streaming, parse the full response body as JSON
+
         val body = response.body()?.string() ?: return "New Chat"
         return try {
             val json = com.google.gson.JsonParser.parseString(body).asJsonObject
@@ -142,7 +137,6 @@ class ChatRepositoryImpl @Inject constructor(
 
 }
 
-// ─── Mappers ──────────────────────────────────────────────────────────────────
 
 private fun MessageEntity.toDomain() = Message(
     id = id,
@@ -150,7 +144,8 @@ private fun MessageEntity.toDomain() = Message(
     content = content,
     role = MessageRole.valueOf(role),
     timestamp = timestamp,
-    isStreaming = isStreaming
+    isStreaming = isStreaming,
+    imageUri = imageUri
 )
 
 private fun Message.toEntity() = MessageEntity(
@@ -159,10 +154,10 @@ private fun Message.toEntity() = MessageEntity(
     content = content,
     role = role.name,
     timestamp = timestamp,
-    isStreaming = isStreaming
+    isStreaming = isStreaming,
+    imageUri = imageUri
 )
 
-// ─── ConversationRepositoryImpl (unchanged) ───────────────────────────────────
 
 @Singleton
 class ConversationRepositoryImpl @Inject constructor(
