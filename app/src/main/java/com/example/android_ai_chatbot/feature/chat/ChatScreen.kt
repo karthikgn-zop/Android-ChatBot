@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -33,7 +34,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Stop
@@ -55,10 +58,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.example.android_ai_chatbot.domian.model.ChatState
 import com.example.android_ai_chatbot.domian.model.Message
 import com.example.android_ai_chatbot.domian.model.MessageRole
@@ -82,6 +87,11 @@ fun ChatScreen(
             listState.animateScrollToItem(uiState.messages.lastIndex)
         }
     }
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri -> uri?.let { viewModel.setAttachedImage(it) } }
+
+    val context = LocalContext.current
     val voiceLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -114,8 +124,9 @@ fun ChatScreen(
             ChatInputBar(
                 text = uiState.inputText,
                 isStreaming = uiState.chatState == ChatState.Streaming,
+                attachedImageUri = uiState.attachedImageUri,
                 onTextChange = viewModel::onInputChanged,
-                onSend = viewModel::sendMessage,
+                onSend = { viewModel.sendMessage(context) },
                 onVoiceClick = {
                     val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                         putExtra(
@@ -125,7 +136,8 @@ fun ChatScreen(
                         putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your message...")
                     }
                     voiceLauncher.launch(intent)
-                }
+                }, onAttachImage = { imagePickerLauncher.launch("image/*") },
+                onRemoveImage = { viewModel.clearAttachment() }
             )
         }
     ) { paddingValues ->
@@ -150,7 +162,6 @@ fun ChatScreen(
                         MessageBubble(message = message)
                     }
 
-                    // Typing indicator while waiting for first token
                     if (uiState.chatState == ChatState.Streaming &&
                         uiState.messages.lastOrNull()?.role == MessageRole.USER
                     ) {
@@ -183,7 +194,6 @@ private fun MessageBubble(message: Message) {
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
     ) {
         if (!isUser) {
-            // AI avatar
             Box(
                 modifier = Modifier
                     .size(32.dp)
@@ -211,14 +221,30 @@ private fun MessageBubble(message: Message) {
                 modifier = Modifier.widthIn(max = 280.dp)
             ) {
                 Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                    Text(
-                        text = message.content,
-                        color = if (isUser)
-                            MaterialTheme.colorScheme.onPrimary
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+
+                    message.imageUri?.let { uriString ->
+                        AsyncImage(
+                            model = android.net.Uri.parse(uriString),
+                            contentDescription = "Attached image",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 200.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .padding(bottom = 4.dp),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    }
+
+                    if (message.content.isNotBlank()) {
+                        Text(
+                            text = message.content,
+                            color = if (isUser)
+                                MaterialTheme.colorScheme.onPrimary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
 
                     if (message.isStreaming) {
                         StreamingCursor()
@@ -283,47 +309,90 @@ private fun TypingIndicator() {
 private fun ChatInputBar(
     text: String,
     isStreaming: Boolean,
+    attachedImageUri: android.net.Uri?,
     onTextChange: (String) -> Unit,
     onSend: () -> Unit,
-    onVoiceClick: () -> Unit
+    onVoiceClick: () -> Unit,
+    onAttachImage: () -> Unit,
+    onRemoveImage: () -> Unit
 ) {
     Surface(shadowElevation = 4.dp) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-                .navigationBarsPadding()
-                .imePadding(),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            OutlinedTextField(
-                value = text,
-                onValueChange = onTextChange,
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("Message...") },
-                maxLines = 5,
-                shape = RoundedCornerShape(24.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            // Show voice button when input is empty, send button when there's text
-            AnimatedContent(targetState = text.isBlank(), label = "fab") { isBlank ->
-                if (isBlank) {
-                    IconButton(onClick = onVoiceClick) {
-                        Icon(Icons.Default.Mic, contentDescription = "Voice input")
-                    }
-                } else {
-                    IconButton(
-                        onClick = onSend,
-                        enabled = !isStreaming,
+        Column {
+            attachedImageUri?.let { uri ->
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                ) {
+                    AsyncImage(
+                        model = uri,
+                        contentDescription = "Attached image",
                         modifier = Modifier
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary)
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                    )
+                    IconButton(
+                        onClick = onRemoveImage,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(24.dp)
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                CircleShape
+                            )
                     ) {
                         Icon(
-                            Icons.Default.Send,
-                            contentDescription = "Send",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            Icons.Default.Close,
+                            contentDescription = "Remove image",
+                            modifier = Modifier.size(14.dp)
                         )
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .navigationBarsPadding()
+                    .imePadding(),
+                verticalAlignment = Alignment.Bottom
+            ) {
+
+
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = onTextChange,
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Message...") },
+                    maxLines = 5,
+                    shape = RoundedCornerShape(24.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                IconButton(onClick = onAttachImage) {
+                    Icon(Icons.Default.AttachFile, contentDescription = "Attach image")
+                }
+                Spacer(Modifier.width(8.dp))
+                AnimatedContent(
+                    targetState = text.isBlank() && attachedImageUri == null,
+                    label = "fab"
+                ) { isBlank ->
+                    if (isBlank) {
+                        IconButton(onClick = onVoiceClick) {
+                            Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                        }
+                    } else {
+                        IconButton(
+                            onClick = onSend,
+                            enabled = !isStreaming,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary)
+                        ) {
+                            Icon(
+                                Icons.Default.Send, contentDescription = "Send",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
                     }
                 }
             }

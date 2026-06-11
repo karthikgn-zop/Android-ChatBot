@@ -3,7 +3,9 @@ package com.example.android_ai_chatbot.feature.chat
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import java.util.UUID
+import com.example.android_ai_chatbot.data.remote.ImageContentPart
+import com.example.android_ai_chatbot.data.remote.ImageUrl
+import com.example.android_ai_chatbot.data.remote.TextContentPart
 import com.example.android_ai_chatbot.domian.model.ChatState
 import com.example.android_ai_chatbot.domian.model.Message
 import com.example.android_ai_chatbot.domian.model.MessageRole
@@ -16,17 +18,17 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Collections.list
+import java.util.UUID
 import javax.inject.Inject
 
 data class ChatUiState(
     val messages: List<Message> = emptyList(),
     val chatState: ChatState = ChatState.Idle,
     val inputText: String = "",
-    val conversationTitle: String = "New chat"
+    val conversationTitle: String = "New chat",
+    val attachedImageUri: android.net.Uri? = null
 )
 
 @HiltViewModel
@@ -65,17 +67,36 @@ class ChatViewModel @Inject constructor(
         _uiState.update { it.copy(inputText = text) }
     }
 
-    fun sendMessage() {
+    fun sendMessage(context: android.content.Context) {
         val prompt = _uiState.value.inputText.trim()
-        if (prompt.isBlank() || _uiState.value.chatState == ChatState.Streaming) return
+        val imageUri = _uiState.value.attachedImageUri
+        if (prompt.isBlank() && imageUri == null) return
+        if (_uiState.value.chatState == ChatState.Streaming) return
 
         val isFirstMessage = _uiState.value.messages.none { it.role == MessageRole.USER }
-        _uiState.update { it.copy(inputText = "", chatState = ChatState.Streaming) }
+        _uiState.update {
+            it.copy(
+                inputText = "",
+                attachedImageUri = null,
+                chatState = ChatState.Streaming
+            )
+        }
 
         streamingJob = viewModelScope.launch {
-
-            // ← NO user message save here, SendMessageUseCase does it
             val accumulatedContent = StringBuilder()
+
+            val userMessage = Message(
+                id = UUID.randomUUID().toString(),
+                conversationId = conversationId,
+                content = prompt.ifBlank { "Image attached" },
+                role = MessageRole.USER,
+                timestamp = System.currentTimeMillis(),
+                isStreaming = false,
+                imageUri = imageUri?.toString()
+            )
+            chatRepository.saveMessage(userMessage)
+            conversationRepository.updateTimestamp(conversationId, System.currentTimeMillis())
+
             val aiMessageId = UUID.randomUUID().toString()
             val aiPlaceholder = Message(
                 id = aiMessageId,
@@ -87,13 +108,24 @@ class ChatViewModel @Inject constructor(
             )
 
             runCatching {
-                // SendMessageUseCase saves user message first, then returns stream
-                sendMessageUseCase(
+                val messageContent: Any = if (imageUri != null) {
+                    val base64 = imageUri.toBase64(context)
+                    val mimeType = context.contentResolver.getType(imageUri) ?: "image/jpeg"
+                    listOf(
+                        TextContentPart(text = prompt.ifBlank { "What's in this image?" }),
+                        ImageContentPart(imageUrl = ImageUrl("data:$mimeType;base64,$base64"))
+                    )
+                } else {
+                    prompt
+                }
+
+
+                chatRepository.sendMessageStream(
                     conversationId = conversationId,
-                    userText = prompt,
-                    history = _uiState.value.messages
+                    prompt = prompt.ifBlank { "Image attached" },
+                    history = _uiState.value.messages,
+                    messageContent = messageContent
                 ).collect { token ->
-                    // Save AI placeholder only on first token so it appears after user message
                     if (accumulatedContent.isEmpty()) {
                         chatRepository.saveMessage(aiPlaceholder)
                     }
@@ -109,7 +141,8 @@ class ChatViewModel @Inject constructor(
 
             if (isFirstMessage) {
                 runCatching {
-                    val title = chatRepository.generateTitle(prompt)
+                    val title =
+                        chatRepository.generateTitle(prompt.ifBlank { "Image conversation" })
                     conversationRepository.renameConversation(conversationId, title)
                 }
             }
@@ -130,4 +163,18 @@ class ChatViewModel @Inject constructor(
     fun clearError() {
         _uiState.update { it.copy(chatState = ChatState.Idle) }
     }
+
+    fun setAttachedImage(uri: android.net.Uri) {
+        _uiState.update { it.copy(attachedImageUri = uri) }
+    }
+
+    fun clearAttachment() {
+        _uiState.update { it.copy(attachedImageUri = null) }
+    }
+
+    private fun android.net.Uri.toBase64(context: android.content.Context): String {
+        val bytes = context.contentResolver.openInputStream(this)?.readBytes() ?: return ""
+        return android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+    }
+
 }

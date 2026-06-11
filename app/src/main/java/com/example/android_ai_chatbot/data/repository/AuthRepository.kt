@@ -39,7 +39,7 @@ class AuthRepository @Inject constructor(
 
             val googleIdOption = GetGoogleIdOption.Builder()
                 .setFilterByAuthorizedAccounts(false)
-                .setServerClientId(WEB_CLIENT_ID)  // from Firebase Console
+                .setServerClientId(WEB_CLIENT_ID)
                 .setAutoSelectEnabled(false)
                 .build()
 

@@ -21,7 +21,21 @@ data class OpenAIRequest(
 
 data class OpenAIMessage(
     val role: String,
-    val content: String
+    val content: Any
+)
+
+data class TextContentPart(
+    val type: String = "text",
+    val text: String
+)
+
+data class ImageContentPart(
+    val type: String = "image_url",
+    @SerializedName("image_url") val imageUrl: ImageUrl
+)
+
+data class ImageUrl(
+    val url: String
 )
 
 data class OpenAIStreamChunk(

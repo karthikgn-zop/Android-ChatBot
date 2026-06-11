@@ -13,7 +13,8 @@ data class Message(
     val content: String,
     val role: MessageRole,
     val timestamp: Long,
-    val isStreaming: Boolean = false
+    val isStreaming: Boolean = false,
+    val imageUri: String? = null
 )
 
 enum class MessageRole { USER, ASSISTANT }

@@ -53,7 +53,7 @@ android {
     buildTypes {
         debug {
             buildConfigField("String", "API_KEY", "\"${localProperties.getProperty("API_KEY", "")}\"")
-            buildConfigField("String", "MODEL", "\"${localProperties.getProperty("MODEL", "gemini-2.0-flash-lite")}\"")  // add
+            buildConfigField("String", "MODEL", "\"${localProperties.getProperty("MODEL", "gemini-2.0-flash-lite")}\"")
         }
         release {
             isMinifyEnabled = false
@@ -62,7 +62,7 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigField("String", "API_KEY", "\"${localProperties.getProperty("API_KEY", "")}\"")
-            buildConfigField("String", "MODEL", "\"${localProperties.getProperty("MODEL", "gemini-2.0-flash-lite")}\"")  // add
+            buildConfigField("String", "MODEL", "\"${localProperties.getProperty("MODEL", "gemini-2.0-flash-lite")}\"")
         }
     }
 
@@ -131,4 +131,5 @@ dependencies {
     implementation("androidx.datastore:datastore:1.1.1")
     implementation(platform("com.google.firebase:firebase-bom:32.7.4"))  // Kotlin 2.1 compatible
     implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

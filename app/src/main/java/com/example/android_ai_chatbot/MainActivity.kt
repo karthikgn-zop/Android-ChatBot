@@ -20,14 +20,13 @@ import com.example.android_ai_chatbot.feature.chat.ChatScreen
 import com.example.android_ai_chatbot.feature.history.HistoryScreen
 import com.example.android_ai_chatbot.feature.settings.SettingsScreen
 import com.example.android_ai_chatbot.feature.settings.SettingsViewModel
-import com.example.android_ai_chatbot.ui.theme.Android_AI_ChatbotTheme as AIChatTheme
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.HiltAndroidApp
+import com.example.android_ai_chatbot.ui.theme.Android_AI_ChatbotTheme as AIChatTheme
 
 @HiltAndroidApp
 class AIChatApplication : Application()
 
-// ─── Main Activity ────────────────────────────────────────────────────────────
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -67,7 +66,6 @@ fun AIChatNavGraph() {
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = hiltViewModel()
 
-    // Start on login if not signed in, history if already signed in
     val startDestination = if (authViewModel.isLoggedIn) Routes.HISTORY else Routes.LOGIN
 
     NavHost(navController = navController, startDestination = startDestination) {
