@@ -14,3 +14,5 @@
 .cxx
 local.properties
 /app/google-services.json
+/release-keystore.jks
+/app/build.gradle.kts
