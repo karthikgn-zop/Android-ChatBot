@@ -6,18 +6,24 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -42,7 +48,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -53,8 +63,12 @@ import com.example.android_ai_chatbot.domian.usecase.CreateConversationUseCase
 import com.example.android_ai_chatbot.domian.usecase.DeleteConversationUseCase
 import com.example.android_ai_chatbot.domian.usecase.GetConversationsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -70,8 +84,20 @@ class HistoryViewModel @Inject constructor(
     private val conversationRepo: ConversationRepository
 ) : ViewModel() {
 
-    val conversations: StateFlow<List<Conversation>> = getConversations()
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val conversations: StateFlow<List<Conversation>> = _searchQuery
+        .flatMapLatest { query ->
+            if (query.isBlank()) getConversations()
+            else conversationRepo.searchConversations(query)
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun onSearchQueryChanged(query: String) {
+        _searchQuery.value = query
+    }
 
     fun newConversation(onCreated: (String) -> Unit) {
         viewModelScope.launch {
@@ -81,15 +107,11 @@ class HistoryViewModel @Inject constructor(
     }
 
     fun deleteConversation(id: String) {
-        viewModelScope.launch {
-            deleteConversationUseCase(id)
-        }
+        viewModelScope.launch { deleteConversationUseCase(id) }
     }
 
     fun renameConversation(id: String, newTitle: String) {
-        viewModelScope.launch {
-            conversationRepo.renameConversation(id, newTitle)
-        }
+        viewModelScope.launch { conversationRepo.renameConversation(id, newTitle) }
     }
 }
 
@@ -102,27 +124,64 @@ fun HistoryScreen(
     viewModel: HistoryViewModel = hiltViewModel()
 ) {
     val conversations by viewModel.conversations.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    var showSearch by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf<Conversation?>(null) }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Conversations") },
-                actions = {
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+            if (showSearch) {
+                TopAppBar(
+                    title = {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = viewModel::onSearchQueryChanged,
+                            placeholder = { Text("Search conversations...") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(24.dp),
+                            leadingIcon = {
+                                Icon(Icons.Default.Search, contentDescription = null)
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotBlank()) {
+                                    IconButton(onClick = {
+                                        viewModel.onSearchQueryChanged("")
+                                    }) {
+                                        Icon(Icons.Default.Close, contentDescription = "Clear")
+                                    }
+                                }
+                            }
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            showSearch = false
+                            viewModel.onSearchQueryChanged("")
+                        }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
                     }
-                }
-            )
+                )
+            } else {
+                TopAppBar(
+                    title = { Text("Conversations") },
+                    actions = {
+                        IconButton(onClick = { showSearch = true }) {
+                            Icon(Icons.Default.Search, contentDescription = "Search")
+                        }
+                        IconButton(onClick = onNavigateToSettings) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        }
+                    }
+                )
+            }
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = {
                     viewModel.newConversation { id ->
-                        onOpenConversation(
-                            id,
-                            "New chat"
-                        )
+                        onOpenConversation(id, "New chat")
                     }
                 },
                 icon = { Icon(Icons.Default.Add, contentDescription = "New chat") },
@@ -139,16 +198,29 @@ fun HistoryScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
-                        Icons.Default.ChatBubbleOutline, null,
+                        imageVector = if (searchQuery.isBlank())
+                            Icons.Default.ChatBubbleOutline
+                        else
+                            Icons.Default.SearchOff,
+                        contentDescription = null,
                         modifier = Modifier.size(56.dp),
                         tint = MaterialTheme.colorScheme.outline
                     )
                     Spacer(Modifier.height(12.dp))
-                    Text("No conversations yet", color = MaterialTheme.colorScheme.outline)
                     Text(
-                        "Tap + to start one", color = MaterialTheme.colorScheme.outline,
-                        style = MaterialTheme.typography.bodySmall
+                        text = if (searchQuery.isBlank())
+                            "No conversations yet"
+                        else
+                            "No results for \"$searchQuery\"",
+                        color = MaterialTheme.colorScheme.outline
                     )
+                    if (searchQuery.isBlank()) {
+                        Text(
+                            "Tap + to start one",
+                            color = MaterialTheme.colorScheme.outline,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         } else {
@@ -161,6 +233,7 @@ fun HistoryScreen(
                 items(conversations, key = { it.id }) { conversation ->
                     ConversationItem(
                         conversation = conversation,
+                        searchQuery = searchQuery,
                         onClick = { onOpenConversation(conversation.id, conversation.title) },
                         onRename = { showRenameDialog = conversation },
                         onDelete = { viewModel.deleteConversation(conversation.id) }
@@ -200,6 +273,7 @@ fun HistoryScreen(
 @Composable
 private fun ConversationItem(
     conversation: Conversation,
+    searchQuery: String,
     onClick: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit
@@ -209,7 +283,18 @@ private fun ConversationItem(
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
         headlineContent = {
-            Text(conversation.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (searchQuery.isBlank()) {
+                Text(
+                    conversation.title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            } else {
+                HighlightedText(
+                    text = conversation.title,
+                    searchQuery = searchQuery
+                )
+            }
         },
         supportingContent = {
             Text(
@@ -220,7 +305,8 @@ private fun ConversationItem(
         },
         leadingContent = {
             Icon(
-                Icons.Default.Chat, contentDescription = null,
+                Icons.Default.Chat,
+                contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary
             )
         },
@@ -229,14 +315,19 @@ private fun ConversationItem(
                 IconButton(onClick = { expanded = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "Options")
                 }
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
                     DropdownMenuItem(
                         text = { Text("Rename") },
                         leadingIcon = { Icon(Icons.Default.Edit, null) },
                         onClick = { expanded = false; onRename() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                        text = {
+                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                        },
                         leadingIcon = {
                             Icon(
                                 Icons.Default.Delete, null,
@@ -248,6 +339,37 @@ private fun ConversationItem(
                 }
             }
         }
+    )
+}
+
+@Composable
+private fun HighlightedText(
+    text: String,
+    searchQuery: String
+) {
+    val startIndex = text.lowercase().indexOf(searchQuery.lowercase())
+    if (startIndex == -1) {
+        Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        return
+    }
+    val endIndex = startIndex + searchQuery.length
+    val annotated = buildAnnotatedString {
+        append(text.substring(0, startIndex))
+        withStyle(
+            SpanStyle(
+                background = MaterialTheme.colorScheme.primaryContainer,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                fontWeight = FontWeight.Bold
+            )
+        ) {
+            append(text.substring(startIndex, endIndex))
+        }
+        append(text.substring(endIndex))
+    }
+    Text(
+        text = annotated,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
     )
 }
 

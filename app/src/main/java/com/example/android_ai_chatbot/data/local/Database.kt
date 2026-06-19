@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Fts4
 import androidx.room.Index
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -61,6 +62,17 @@ interface ConversationDao {
 
     @Query("DELETE FROM conversations")
     suspend fun deleteAllConversations()
+
+    @Query(
+        """
+        SELECT conversations.* FROM conversations
+        INNER JOIN conversations_fts 
+        ON conversations.rowid = conversations_fts.rowid
+        WHERE conversations_fts MATCH :query
+        ORDER BY conversations.updatedAt DESC
+    """
+    )
+    fun searchConversations(query: String): Flow<List<ConversationEntity>>
 }
 
 @Dao
@@ -83,10 +95,16 @@ interface MessageDao {
 
 
 @Database(
-    entities = [ConversationEntity::class, MessageEntity::class],
-    version = 2
+    entities = [ConversationEntity::class, MessageEntity::class, ConversationFtsEntity::class],
+    version = 3
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun conversationDao(): ConversationDao
     abstract fun messageDao(): MessageDao
 }
+
+@Entity(tableName = "conversations_fts")
+@Fts4(contentEntity = ConversationEntity::class)
+data class ConversationFtsEntity(
+    val title: String
+)
