@@ -67,6 +67,7 @@ import coil.compose.AsyncImage
 import com.example.android_ai_chatbot.domian.model.ChatState
 import com.example.android_ai_chatbot.domian.model.Message
 import com.example.android_ai_chatbot.domian.model.MessageRole
+import dev.jeziellago.compose.markdowntext.MarkdownText
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -201,7 +202,11 @@ private fun MessageBubble(message: Message) {
                     .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Text("AI", fontSize = 10.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text(
+                    "AI",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             }
             Spacer(Modifier.width(8.dp))
         }
@@ -222,6 +227,7 @@ private fun MessageBubble(message: Message) {
             ) {
                 Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
 
+                    // Show attached image if present
                     message.imageUri?.let { uriString ->
                         AsyncImage(
                             model = android.net.Uri.parse(uriString),
@@ -235,18 +241,24 @@ private fun MessageBubble(message: Message) {
                         )
                     }
 
-                    if (message.content.isNotBlank()) {
+                    if (isUser) {
+                        // ← User messages stay as plain Text
                         Text(
                             text = message.content,
-                            color = if (isUser)
-                                MaterialTheme.colorScheme.onPrimary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             style = MaterialTheme.typography.bodyMedium
+                        )
+                    } else {
+                        // ← AI messages render as Markdown
+                        MarkdownText(
+                            markdown = message.content,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
 
-                    if (message.isStreaming) {
+                    if (message.isStreaming && message.content.isBlank()) {
                         StreamingCursor()
                     }
                 }

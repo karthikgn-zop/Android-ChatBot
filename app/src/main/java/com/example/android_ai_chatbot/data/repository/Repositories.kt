@@ -190,6 +190,9 @@ class ConversationRepositoryImpl @Inject constructor(
     override suspend fun deleteAllConversations() =
         conversationDao.deleteAllConversations()
 
+    override fun searchConversations(query: String): Flow<List<Conversation>> =
+        conversationDao.searchConversations("$query*")
+            .map { list -> list.map { it.toDomain() } }
 }
 
 private fun ConversationEntity.toDomain() = Conversation(

@@ -22,6 +22,7 @@ interface ChatRepository {
 
 interface ConversationRepository {
     fun getAllConversations(): Flow<List<Conversation>>
+    fun searchConversations(query: String): Flow<List<Conversation>>
     suspend fun createConversation(title: String): Conversation
     suspend fun renameConversation(id: String, newTitle: String)
     suspend fun deleteConversation(id: String)
