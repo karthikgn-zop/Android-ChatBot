@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -18,6 +19,8 @@ import com.example.android_ai_chatbot.feature.auth.AuthViewModel
 import com.example.android_ai_chatbot.feature.auth.LoginScreen
 import com.example.android_ai_chatbot.feature.chat.ChatScreen
 import com.example.android_ai_chatbot.feature.history.HistoryScreen
+import com.example.android_ai_chatbot.feature.model.ModelDownloadScreen
+import com.example.android_ai_chatbot.feature.model.ModelDownloadViewModel
 import com.example.android_ai_chatbot.feature.settings.SettingsScreen
 import com.example.android_ai_chatbot.feature.settings.SettingsViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -50,6 +53,7 @@ object Routes {
     const val HISTORY = "history"
     const val SETTINGS = "settings"
     const val CHAT = "chat/{conversationId}/{title}"
+    const val MODEL_DOWNLOAD = "model_download"
 
     fun chat(conversationId: String, title: String) =
         "chat/$conversationId/${title.encodeForNav()}"
@@ -65,16 +69,45 @@ private fun String.decodeFromNav() =
 fun AIChatNavGraph() {
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = hiltViewModel()
+    val modelDownloadViewModel: ModelDownloadViewModel = hiltViewModel()
 
-    val startDestination = if (authViewModel.isLoggedIn) Routes.HISTORY else Routes.LOGIN
+    val uiState by authViewModel.uiState.collectAsState()
+    val isModelDownloaded by modelDownloadViewModel.isDownloaded.collectAsState()
 
-    NavHost(navController = navController, startDestination = startDestination) {
+    LaunchedEffect(uiState.user, isModelDownloaded) {
+        when {
+            uiState.user == null -> {
+                navController.navigate(Routes.LOGIN) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+            !isModelDownloaded -> {
+                navController.navigate(Routes.MODEL_DOWNLOAD) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+            else -> {
+                navController.navigate(Routes.HISTORY) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+        }
+    }
 
+    // ← startDestination is just a placeholder now
+    NavHost(
+        navController = navController,
+        startDestination = Routes.LOGIN  // always start here, LaunchedEffect handles routing
+    ) {
         composable(Routes.LOGIN) {
-            LoginScreen(
-                onLoginSuccess = {
+            LoginScreen(onLoginSuccess = {})  // ← LaunchedEffect handles navigation
+        }
+
+        composable(Routes.MODEL_DOWNLOAD) {
+            ModelDownloadScreen(
+                onDownloadComplete = {
                     navController.navigate(Routes.HISTORY) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
+                        popUpTo(Routes.MODEL_DOWNLOAD) { inclusive = true }
                     }
                 }
             )
@@ -82,40 +115,34 @@ fun AIChatNavGraph() {
 
         composable(Routes.HISTORY) {
             HistoryScreen(
-                onOpenConversation = { id, title ->
-                    navController.navigate(
-                        Routes.chat(
-                            id,
-                            title
-                        )
-                    )
-                },
+                onOpenConversation   = { id, title -> navController.navigate(Routes.chat(id, title)) },
                 onNavigateToSettings = { navController.navigate(Routes.SETTINGS) }
             )
         }
 
         composable(Routes.SETTINGS) {
             SettingsScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack    = { navController.popBackStack() },
                 onNavigateToLogin = {
                     navController.navigate(Routes.LOGIN) {
-                        popUpTo(navController.graph.startDestinationId)
+                        popUpTo(0) { inclusive = true }
                     }
                 }
             )
         }
 
         composable(
-            route = Routes.CHAT,
+            route     = Routes.CHAT,
             arguments = listOf(
                 navArgument("conversationId") { type = NavType.StringType },
-                navArgument("title") { type = NavType.StringType }
+                navArgument("title")          { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val title = backStackEntry.arguments?.getString("title")?.decodeFromNav() ?: "Chat"
+            val title = backStackEntry.arguments
+                ?.getString("title")?.decodeFromNav() ?: "Chat"
             ChatScreen(
                 conversationTitle = title,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack    = { navController.popBackStack() }
             )
         }
     }
