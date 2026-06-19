@@ -15,9 +15,11 @@ import com.example.android_ai_chatbot.domian.model.Message
 import com.example.android_ai_chatbot.domian.model.MessageRole
 import com.example.android_ai_chatbot.domian.repository.ChatRepository
 import com.example.android_ai_chatbot.domian.repository.ConversationRepository
+import com.example.android_ai_chatbot.feature.settings.UserPreferences
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -28,7 +30,8 @@ import javax.inject.Singleton
 @Singleton
 class ChatRepositoryImpl @Inject constructor(
     private val apiService: OpenAIApiService,
-    private val messageDao: MessageDao
+    private val messageDao: MessageDao,
+    private val userPreferences: UserPreferences
 ) : ChatRepository {
 
     private val gson = Gson()
@@ -39,6 +42,8 @@ class ChatRepositoryImpl @Inject constructor(
         history: List<Message>,
         messageContent: Any
     ): Flow<String> = flow {
+
+        val modelId = userPreferences.selectedModelId.first()
 
         val messages = buildList {
             add(OpenAIMessage(role = "system", content = "You are a helpful AI assistant."))
@@ -106,6 +111,8 @@ class ChatRepositoryImpl @Inject constructor(
         messageDao.deleteMessagesForConversation(conversationId)
 
     override suspend fun generateTitle(prompt: String): String {
+        val modelId = userPreferences.selectedModelId.first()  // ← dynamic not BuildConfig.MODEL
+
         val messages = listOf(
             OpenAIMessage(
                 role = "system",
@@ -115,18 +122,19 @@ class ChatRepositoryImpl @Inject constructor(
         )
         val response = apiService.streamChatCompletion(
             OpenAIRequest(
-                model = BuildConfig.MODEL,
+                model = modelId,
                 messages = messages,
                 stream = false,
                 maxTokens = 20
             )
         )
-
         val body = response.body()?.string() ?: return "New Chat"
         return try {
             val json = com.google.gson.JsonParser.parseString(body).asJsonObject
-            json["choices"].asJsonArray[0].asJsonObject["message"]
-                .asJsonObject["content"].asString.trim()
+            json["choices"].asJsonArray[0]
+                .asJsonObject["message"]
+                .asJsonObject["content"]
+                .asString.trim()
         } catch (e: Exception) {
             "New Chat"
         }

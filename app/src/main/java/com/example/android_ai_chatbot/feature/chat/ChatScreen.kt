@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -72,7 +73,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
@@ -81,18 +81,20 @@ fun ChatScreen(
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val selectedModel by viewModel.selectedModel.collectAsState()  // ← here
     val listState = rememberLazyListState()
+    val context = LocalContext.current
 
     LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
             listState.animateScrollToItem(uiState.messages.lastIndex)
         }
     }
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri -> uri?.let { viewModel.setAttachedImage(it) } }
 
-    val context = LocalContext.current
     val voiceLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -103,6 +105,7 @@ fun ChatScreen(
             viewModel.setVoiceInput(text)
         }
     }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -137,49 +140,82 @@ fun ChatScreen(
                         putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your message...")
                     }
                     voiceLauncher.launch(intent)
-                }, onAttachImage = { imagePickerLauncher.launch("image/*") },
+                },
+                onAttachImage = { imagePickerLauncher.launch("image/*") },
                 onRemoveImage = { viewModel.clearAttachment() }
             )
         }
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (uiState.messages.isEmpty()) {
-                EmptyState()
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy((8.dp))
+            // ← Warning banner here inside content, not inside Scaffold params
+            if (uiState.attachedImageUri != null && !selectedModel.supportsImages) {
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(
-                        items = uiState.messages,
-                        key = { it.id }
-                    ) { message ->
-                        MessageBubble(message = message)
-                    }
-
-                    if (uiState.chatState == ChatState.Streaming &&
-                        uiState.messages.lastOrNull()?.role == MessageRole.USER
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        item { TypingIndicator() }
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "${selectedModel.displayName} does not support images. " +
+                                    "Switch to Llama 4 Scout in Settings.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
                     }
                 }
             }
-            if (uiState.chatState is ChatState.Error) {
-                Snackbar(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp),
-                    action = {
-                        TextButton(onClick = viewModel::clearError) { Text("Dismiss") }
+
+            Box(modifier = Modifier.weight(1f)) {
+                if (uiState.messages.isEmpty()) {
+                    EmptyState()
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(
+                            items = uiState.messages,
+                            key = { it.id }
+                        ) { message ->
+                            MessageBubble(message = message)
+                        }
+
+                        if (uiState.chatState == ChatState.Streaming &&
+                            uiState.messages.lastOrNull()?.role == MessageRole.USER
+                        ) {
+                            item { TypingIndicator() }
+                        }
                     }
-                ) {
-                    Text((uiState.chatState as ChatState.Error).message)
+                }
+
+                if (uiState.chatState is ChatState.Error) {
+                    Snackbar(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(16.dp),
+                        action = {
+                            TextButton(onClick = viewModel::clearError) {
+                                Text("Dismiss")
+                            }
+                        }
+                    ) {
+                        Text((uiState.chatState as ChatState.Error).message)
+                    }
                 }
             }
         }
@@ -227,7 +263,6 @@ private fun MessageBubble(message: Message) {
             ) {
                 Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
 
-                    // Show attached image if present
                     message.imageUri?.let { uriString ->
                         AsyncImage(
                             model = android.net.Uri.parse(uriString),
@@ -242,14 +277,12 @@ private fun MessageBubble(message: Message) {
                     }
 
                     if (isUser) {
-                        // ← User messages stay as plain Text
                         Text(
                             text = message.content,
                             color = MaterialTheme.colorScheme.onPrimary,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     } else {
-                        // ← AI messages render as Markdown
                         MarkdownText(
                             markdown = message.content,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -331,10 +364,7 @@ private fun ChatInputBar(
     Surface(shadowElevation = 4.dp) {
         Column {
             attachedImageUri?.let { uri ->
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                ) {
+                Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
                     AsyncImage(
                         model = uri,
                         contentDescription = "Attached image",
@@ -369,8 +399,6 @@ private fun ChatInputBar(
                     .imePadding(),
                 verticalAlignment = Alignment.Bottom
             ) {
-
-
                 OutlinedTextField(
                     value = text,
                     onValueChange = onTextChange,
@@ -401,7 +429,8 @@ private fun ChatInputBar(
                                 .background(MaterialTheme.colorScheme.primary)
                         ) {
                             Icon(
-                                Icons.Default.Send, contentDescription = "Send",
+                                Icons.Default.Send,
+                                contentDescription = "Send",
                                 tint = MaterialTheme.colorScheme.onPrimary
                             )
                         }
@@ -440,7 +469,6 @@ private fun EmptyState() {
         )
     }
 }
-
 
 private fun Long.toReadableTime(): String {
     val sdf = SimpleDateFormat("h:mm a", Locale.getDefault())

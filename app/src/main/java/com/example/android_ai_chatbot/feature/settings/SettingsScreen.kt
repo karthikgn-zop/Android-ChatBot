@@ -1,13 +1,17 @@
 package com.example.android_ai_chatbot.feature.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Info
@@ -34,6 +38,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.android_ai_chatbot.domian.model.AiModel
+import com.example.android_ai_chatbot.domian.model.AvailableModels
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +49,9 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val isDarkMode by viewModel.isDarkMode.collectAsState()
+    val selectedModelId by viewModel.selectedModelId.collectAsState()
     var showClearHistoryDialog by remember { mutableStateOf(false) }
+    var showModelDialog by remember { mutableStateOf(false) }  // ← add
 
     Scaffold(
         topBar = {
@@ -64,9 +72,8 @@ fun SettingsScreen(
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
 
-            item {
-                SettingsSectionHeader(title = "Appearance")
-            }
+            // ── Appearance ───────────────────────────────────────────────────
+            item { SettingsSectionHeader("Appearance") }
 
             item {
                 ListItem(
@@ -86,10 +93,44 @@ fun SettingsScreen(
 
             item { HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp)) }
 
+            // ── AI Model ─────────────────────────────────────────────────────
+            item { SettingsSectionHeader("AI Model") }
 
             item {
-                SettingsSectionHeader(title = "Data")
+                val currentModel = AvailableModels.findById(selectedModelId)
+                ListItem(
+                    headlineContent = { Text("Model") },
+                    supportingContent = {
+                        Column {
+                            Text(currentModel.displayName)
+                            Text(
+                                currentModel.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                            if (currentModel.supportsImages) {
+                                Text(
+                                    "✓ Supports images",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    },
+                    leadingContent = {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                    },
+                    trailingContent = {
+                        Icon(Icons.Default.ChevronRight, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable { showModelDialog = true }
+                )
             }
+
+            item { HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp)) }
+
+            // ── Data ─────────────────────────────────────────────────────────
+            item { SettingsSectionHeader("Data") }
 
             item {
                 ListItem(
@@ -97,7 +138,7 @@ fun SettingsScreen(
                     supportingContent = { Text("Delete all conversations and messages") },
                     leadingContent = {
                         Icon(
-                            imageVector = Icons.Default.DeleteSweep,
+                            Icons.Default.DeleteSweep,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.error
                         )
@@ -110,7 +151,7 @@ fun SettingsScreen(
 
             item {
                 ListItem(
-                    headlineContent = { Text("Sign Out") },
+                    headlineContent = { Text("Sign out") },
                     supportingContent = { Text(viewModel.userEmail) },
                     leadingContent = {
                         Icon(Icons.Default.Logout, contentDescription = null)
@@ -122,32 +163,57 @@ fun SettingsScreen(
                 )
             }
 
-            item {
-                SettingsSectionHeader(title = "About")
-            }
+            item { HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp)) }
+
+            // ── About ────────────────────────────────────────────────────────
+            item { SettingsSectionHeader("About") }
 
             item {
                 ListItem(
                     headlineContent = { Text("Version") },
                     supportingContent = { Text("1.0.0") },
-                    leadingContent = {
-                        Icon(Icons.Default.Info, contentDescription = null)
-                    }
+                    leadingContent = { Icon(Icons.Default.Info, null) }
                 )
             }
 
             item {
                 ListItem(
                     headlineContent = { Text("Powered by") },
-                    supportingContent = { Text("Groq AI") },
-                    leadingContent = {
-                        Icon(Icons.Default.AutoAwesome, contentDescription = null)
-                    }
+                    supportingContent = { Text("Groq API") },
+                    leadingContent = { Icon(Icons.Default.AutoAwesome, null) }
                 )
             }
         }
     }
 
+    // ── Model selector dialog ─────────────────────────────────────────────────
+    if (showModelDialog) {
+        AlertDialog(
+            onDismissRequest = { showModelDialog = false },
+            title = { Text("Select AI Model") },
+            text = {
+                LazyColumn {
+                    items(AvailableModels.models) { model ->
+                        ModelItem(
+                            model = model,
+                            isSelected = model.id == selectedModelId,
+                            onSelect = {
+                                viewModel.selectModel(model.id)
+                                showModelDialog = false
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showModelDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // ── Clear history dialog ──────────────────────────────────────────────────
     if (showClearHistoryDialog) {
         AlertDialog(
             onDismissRequest = { showClearHistoryDialog = false },
@@ -171,9 +237,7 @@ fun SettingsScreen(
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
                     )
-                ) {
-                    Text("Delete all")
-                }
+                ) { Text("Delete all") }
             },
             dismissButton = {
                 TextButton(onClick = { showClearHistoryDialog = false }) {
@@ -182,6 +246,49 @@ fun SettingsScreen(
             }
         )
     }
+}
+
+@Composable
+private fun ModelItem(
+    model: AiModel,
+    isSelected: Boolean,
+    onSelect: () -> Unit
+) {
+    ListItem(
+        headlineContent = { Text(model.displayName) },
+        supportingContent = {
+            Column {
+                Text(
+                    model.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                if (model.supportsImages) {
+                    Text(
+                        "✓ Supports images",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Text(
+                        "✗ Text only",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
+        },
+        trailingContent = {
+            if (isSelected) {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = "Selected",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        },
+        modifier = Modifier.clickable(onClick = onSelect)
+    )
 }
 
 @Composable
