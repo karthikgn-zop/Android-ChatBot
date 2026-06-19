@@ -5,8 +5,8 @@ import androidx.room.Room
 import com.aichat.data.local.AppDatabase
 import com.aichat.data.local.ConversationDao
 import com.aichat.data.local.MessageDao
-import com.aichat.data.repository.ChatRepositoryImpl
-import com.aichat.data.repository.ConversationRepositoryImpl
+import com.example.android_ai_chatbot.data.repository.ChatRepositoryImpl
+import com.example.android_ai_chatbot.data.repository.ConversationRepositoryImpl
 import com.example.android_ai_chatbot.BuildConfig
 import com.example.android_ai_chatbot.data.remote.OpenAIApiService
 import com.example.android_ai_chatbot.data.remote.OpenAIMessage
