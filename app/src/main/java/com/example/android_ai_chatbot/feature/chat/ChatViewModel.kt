@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.android_ai_chatbot.data.remote.ImageContentPart
 import com.example.android_ai_chatbot.data.remote.ImageUrl
 import com.example.android_ai_chatbot.data.remote.TextContentPart
+import com.example.android_ai_chatbot.domian.model.AiModel
+import com.example.android_ai_chatbot.domian.model.AvailableModels
 import com.example.android_ai_chatbot.domian.model.ChatState
 import com.example.android_ai_chatbot.domian.model.Message
 import com.example.android_ai_chatbot.domian.model.MessageRole
@@ -13,11 +15,15 @@ import com.example.android_ai_chatbot.domian.repository.ChatRepository
 import com.example.android_ai_chatbot.domian.repository.ConversationRepository
 import com.example.android_ai_chatbot.domian.usecase.GetMessagesUseCase
 import com.example.android_ai_chatbot.domian.usecase.SendMessageUseCase
+import com.example.android_ai_chatbot.feature.settings.UserPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -37,11 +43,20 @@ class ChatViewModel @Inject constructor(
     private val conversationRepository: ConversationRepository,
     private val getMessagesUseCase: GetMessagesUseCase,
     private val chatRepository: ChatRepository,
+    private val userPreferences: UserPreferences,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val conversationId: String = checkNotNull(savedStateHandle["conversationId"])
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
+
+    val selectedModel: StateFlow<AiModel> = userPreferences.selectedModelId
+        .map { AvailableModels.findById(it) }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            AvailableModels.default
+        )
 
     private var streamingJob: Job? = null
 
@@ -80,6 +95,18 @@ class ChatViewModel @Inject constructor(
                 attachedImageUri = null,
                 chatState = ChatState.Streaming
             )
+        }
+
+        if (imageUri != null && !selectedModel.value.supportsImages) {
+            _uiState.update {
+                it.copy(
+                    chatState = ChatState.Error(
+                        "${selectedModel.value.displayName} does not support images. " +
+                                "Switch to Llama 4 Scout in Settings."
+                    )
+                )
+            }
+            return
         }
 
         streamingJob = viewModelScope.launch {
